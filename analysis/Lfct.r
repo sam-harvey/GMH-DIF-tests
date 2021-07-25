@@ -1,8 +1,7 @@
 
-library(MASS);
-source("Odds.R")   # that's where the UTI data comes from
-source("Odds_suppl.R")  # functions, e.g. to get MH estimators
-source("DIF.fcts.r")
+source("analysis/Odds.R")   # that's where the UTI data comes from
+source("analysis/Odds_suppl.R")  # functions, e.g. to get MH estimators
+source("analysis/DIF.fcts.r")
 
 
 obtain.counts<-function(y,c,pairwise=TRUE){
@@ -162,8 +161,7 @@ rownames(CI)<-c("lower","upper")
 #colnames(CI)<- items
 
 
-library(corpcor)
-library(Matrix)
+
 
 # now compare
 # first adjustment

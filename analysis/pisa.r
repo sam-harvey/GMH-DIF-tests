@@ -1,31 +1,18 @@
-setwd("~/R/DIF")
-library(xlsx)
-load("~/R/DIF/pisa_AUS_bookID_1.RData")
+rm(list=ls())
+load("data/pisa_AUS_bookID_1.RData")
 
+source('libraries.R')
+source("analysis/Odds.R")   # that's where the UTI data comes from
+source("analysis/Odds_suppl.R")  # functions, e.g. to get MH estimators
+source("analysis/Lfct.r")
+source("analysis/DIF.fcts.r")
 
-#my working directory
-# setwd( "D:/Thomas/PhD-WLG/r/Odds")
-# setwd("C:/Users/tsuesse/Dropbox/2row/DIF")
-# setwd("~/R/DIF")
-
-# source("sample.code.L.r")
-
-#rm(list=ls());  # delete everything
-
-library(MASS);
-source("Odds.R")   # that's where the UTI data comes from
-source("Odds_suppl.R")  # functions, e.g. to get MH estimators
-#source("gen_mult.R");   # needed for generating artificial data
-#source("mph.Rcode.R")   # fitting Lang's code
-library(mltools)
-
-# mean(apply(dat[,3:37]==8,1,mean,na.rm=TRUE)>0)
-
+set.seed(1)
 
 ##DATA SETS
 alpha<-0.05
-within.group<-F
-zeros<-F
+within.group<-T
+zeros<-T
 m<-35
 
 dat<-as.data.frame(pisa.AUS.book1)
@@ -45,7 +32,7 @@ hist(dat[,"Total"])
 dat[, "group"] <- bin_data(dat[,"Total"], bins=c(-Inf,seq(5,30,by=5), Inf), binType = "explicit")
 
 dat1<-dat[,3:(m+2)]
-dat1<-cbind(as.integer(dat[, "group"]),as.integer(dat[,"Gender"]),dat1)
+dat1<-cbind(as.integer(dat[, "group"]),as.integer(as.factor(dat[,"Gender"])),dat1)
 
 colnames(dat1)<- c("Stratum","Gender",colnames(dat1)[-(1:2)])
 
@@ -56,10 +43,6 @@ K<-7
 y.sim<-as.matrix(dat1)
 
 
-source("Odds_suppl.R")
-source("Lfct.r")
-library("mipfp")
-source("DIF.fcts.r")
 zeros<-FALSE
 
 # y.sim : 1st column is k and 2nd column is row
@@ -97,69 +80,93 @@ summary(ORpair)
 
 m.pairs<-m*(m-1)/2
 
-cat("create Bootstrap samples and calculate Bootstrap Covariance matrix\n")
-BT<-10e3
-st<-system.time({
-  L.BT <- matrix(NA,0,m)
-  W.BT<-NULL
-  Wind.BT<-NULL
-  ORpair.BT <- matrix(NA,0,m.pairs)
+sim_cluster = makeCluster(detectCores() - 1)
 
+BT = 10000
+L.BT <- matrix(NA,0,m)
+W.BT<-NULL
+Wind.BT<-NULL
+ORpair.BT <- matrix(NA,0,m.pairs)
 
-  while(dim(L.BT)[1]<BT){
+construct.tests.ornull = safely(construct.tests, otherwise = NULL)
 
-    y.boot<- obtain.bootstrap.samples(y.sim,within.group=within.group,K=K)
-    hilf<- obtain.counts.y(y.boot,K,m)
+clusterExport(sim_cluster, ls()[ls() != 'sim_cluster'])
+clusterEvalQ(sim_cluster, {source('libraries.R')})
 
-    X.BT<-t(hilf$X)
-    X1.BT<-t(hilf$X1)
-    nk.BT<-t(as.matrix(hilf$nk))
-    X00.BT<-t(hilf$X00)
-    X10.BT<-t(hilf$X10)
-    X01.BT<-t(hilf$X01)
-    X11.BT<-t(hilf$X11)
-    hilfBT1<-  M.H.Est(data2=NULL,c=m,r=2,K,X=X.BT,X1=X1.BT,h00=X00.BT,h10=X10.BT,h01=X01.BT,h11=X11.BT,zeros=zeros,n=nk)
+bootstramp_samples = parLapply(sim_cluster,
+                               1:BT,
+                               function(x){
+                                 
+                                 y.boot<- obtain.bootstrap.samples(y.sim,within.group=within.group,K=K)
+                                 hilf<- obtain.counts.y(y.boot,K,m)
+                                 
+                                 X.BT<-t(hilf$X)
+                                 X1.BT<-t(hilf$X1)
+                                 nk.BT<-t(as.matrix(hilf$nk))
+                                 X00.BT<-t(hilf$X00)
+                                 X10.BT<-t(hilf$X10)
+                                 X01.BT<-t(hilf$X01)
+                                 X11.BT<-t(hilf$X11)
+                                 hilfBT1<-  M.H.Est(data2=NULL,c=m,r=2,K,X=X.BT,X1=X1.BT,h00=X00.BT,h10=X10.BT,h01=X01.BT,h11=X11.BT,zeros=zeros,n=nk)
+                                 
+                                 y.boot.ind<- obtain.bootstrap.samples.ind(y.sim,within.group=TRUE,K=K)
+                                 hilf<- obtain.counts.y(y.boot.ind,K,m)
+                                 
+                                 X.BT.ind<-t(hilf$X)
+                                 X1.BT.ind<-t(hilf$X1)
+                                 nk.BT.ind<-t(as.matrix(hilf$nk))
+                                 X00.BT.ind<-t(hilf$X00)
+                                 X10.BT.ind<-t(hilf$X10)
+                                 X01.BT.ind<-t(hilf$X01)
+                                 X11.BT.ind<-t(hilf$X11)
+                                 nk<-hilf$nk
+                                 
+                                 OR.pair.BT = OR.pair(X11.BT.ind,X10.BT.ind,X01.BT.ind,X00.BT.ind,K=K,nk=nk)
+                                 
+                                 if(!is.null(hilfBT1[[1]])){
+                                   
+                                   L.BT<- hilfBT1[[2]]
+                                   
+                                   hilfBT2<-construct.tests.ornull(L=hilfBT1[[2]],VarL=hilfBT1[[3]],CovL=hilfBT1[[4]],show=F)
+                                   
+                                   # W.BT = NULL
+                                   # Wind.BT = NULL
+                                   
+                                   if(!is.null(hilfBT2)){
+                                     W.BT <- hilfBT2$result$W
+                                     Wind.BT <- hilfBT2$result$Wind
+                                   }
+                                   
+                                 }#end
+                                 
+                                 output = list(OR.pair.BT, Wind.BT, W.BT, L.BT)
+                                 return(output)
+                                 
+                               })
 
-    y.boot.ind<- obtain.bootstrap.samples.ind(y.sim,within.group=TRUE,K=K)
-    hilf<- obtain.counts.y(y.boot.ind,K,m)
+stopCluster(sim_cluster)
 
-    X.BT.ind<-t(hilf$X)
-    X1.BT.ind<-t(hilf$X1)
-    nk.BT.ind<-t(as.matrix(hilf$nk))
-    X00.BT.ind<-t(hilf$X00)
-    X10.BT.ind<-t(hilf$X10)
-    X01.BT.ind<-t(hilf$X01)
-    X11.BT.ind<-t(hilf$X11)
-    nk<-hilf$nk
+ORpair.BT = map(bootstramp_samples,
+                 ~.[[1]]) %>% 
+  reduce(rbind) 
 
-    ORpair.BT <- rbind(ORpair.BT,OR.pair(X11.BT.ind,X10.BT.ind,X01.BT.ind,X00.BT.ind,K=K,nk=nk))
+Wind.BT = map(bootstramp_samples,
+              ~.[[2]]) %>% 
+  reduce(c) 
 
-    if(!is.null(hilfBT1[[1]])){
+W.BT = map(bootstramp_samples,
+           ~.[[3]]) %>% 
+  reduce(c) 
 
-      L.BT<- rbind(L.BT,hilfBT1[[2]])
-
-      #VarLBT<-hilfBT1[[3]]  # variance of Lab for particular item
-      #CovLBT<-hilfBT1[[4]]  # covariance between items, c=4, e.g. Cov(L(item1),L(item2)) which is in entru CovL[1,2]
-
-      if(dim(L.BT)[1]%%100==0){cat("Iteration",dim(L.BT)[1],"\n")}
-
-      hilfBT2<-try(construct.tests(L=hilfBT1[[2]],VarL=hilfBT1[[3]],CovL=hilfBT1[[4]],show=F))
-
-      Wind.BT<- c(Wind.BT,hilfBT2$Wind)
-
-
-      if(!inherits(hilfBT2,'try-error')){W.BT<-c(W.BT,c(hilfBT2$W))}
-
-    }#end
-
-  }#end for
-})
-print(st)
+L.BT = map(bootstramp_samples,
+           ~.[[4]]) %>% 
+  reduce(rbind) 
 
 #X.BT[1:5,1:4]
 
 
 # hilf<-abs(log(ORpair.BT))>=abs(matrix(log(ORpair),dim(ORpair.BT)[1],741,byrow=TRUE))
+hilf<-abs(log(ORpair.BT))>=abs(matrix(log(ORpair),dim(ORpair.BT)[1],m*(m-1)/2,byrow=TRUE))
 hilf0<- ORpair.BT >= matrix(ORpair,dim(ORpair.BT)[1],m*(m-1)/2,byrow=TRUE)
 pval.ORpair<-apply(hilf0,2,mean,na.rm=TRUE)
 summary(pval.ORpair)
@@ -220,15 +227,8 @@ if(!inherits(tests1,'try-error')){
 CI.L<-cbind(c(L-1.96*sqrt(VarL)),c(L+1.96*sqrt(VarL)))
 CI.L.BT<-cbind(c(L-1.96*sqrt(diag(L.Cov.BT))),c(L+1.96*sqrt(diag(L.Cov.BT))))
 
-
-
-
-
-
-
 # Ws are W's from BT
 # W is just single test statistic from original data set
-
 
 # hilf1$W
 # hilf$W
@@ -238,7 +238,7 @@ W.BT2 <- diag(L.BT%*%solve(L.Cov.BT)%*%t(L.BT))  # use L.Cov.BT for all BT sampl
 # plot(density(W.BT2));abline(v=hilf1$W)
 
 Wind.pvalue.BT<- mean(abs(Wind.BT)>=abs(c(W0ind)) ,na.rm=TRUE)
-Wind.pvalue<- tests$pvalueWind
+Wind.pvalue <- tests$pvalueWind
 
 W.pvalue.BT1 <- mean(abs(W.BT1)>=abs(c(W0)) ,na.rm=TRUE)
 W.pvalue.BT2 <- mean(W.BT2>=c(W0.BT),na.rm=TRUE)
@@ -266,5 +266,7 @@ ORpair.matrix<-t(ORpair.matrix)
 pval.ORpair.matrix[ind]<-pval.ORpair
 pval.ORpair.matrix<-t(pval.ORpair.matrix)
 
-save(L,CovL,VarL,L.Cov.BT,Wpvals,ORpair,ORpair.BT,pval.ORpair,pval.ORpair.matrix,ORpair.matrix,pairs,tests,
-     file="pisa_results.RData")
+save(L,CovL,VarL,L.BT,L.Cov.BT,Wpvals,
+     ORpair,ORpair.BT,pval.ORpair,pval.ORpair.matrix,ORpair.matrix,pairs,tests,
+     bootstramp_samples,
+     file="data/pisa_results_3.RData")

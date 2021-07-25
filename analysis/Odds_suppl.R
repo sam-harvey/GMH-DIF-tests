@@ -1,4 +1,4 @@
-library(tensor);
+
 # main function list:
 
 # getjoint<-function(odds,margp,pair=1,method=1)
