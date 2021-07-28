@@ -7,7 +7,8 @@ Programme for International Student Assessment (PISA).
 
 # Installation
 
-This uses R 3.6.3. Install these versions of [R](https://cran.r-project.org/bin/windows/base/old/3.6.3/) and [Rtools](https://cran.r-project.org/bin/windows/Rtools/history.html). Then run the setup file to install dependencies.
+This uses R 3.6.3. Install these versions of [R](https://cran.r-project.org/bin/windows/base/old/3.6.3/) and [Rtools](https://cran.r-project.org/bin/windows/Rtools/history.html). 
+Then run the setup file to install dependencies.
 
 `
 source('setup.R')
@@ -20,7 +21,7 @@ The file download-data.sh provides the kaggle API command to download this.
 
 To reproduce the final output run after installing and downloading the dataset run `main.R`.
 This will generate several files in 'data/output'.
-These are
+These are:
 
-* pisa_results.RData - the main results including our test results
-* table csvs - the output tables of the PISA section are provided in CSV format
+* output/pisa_results.RData - the main results including our test results
+* output/tables - the output tables of the PISA section are provided in CSV format
