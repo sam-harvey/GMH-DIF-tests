@@ -1,11 +1,14 @@
+#This runs the analysis of PISA data using proposed estimators
+
 rm(list=ls())
-load("data/pisa_AUS_bookID_1.RData")
 
 source('libraries.R')
 source("analysis/Odds.R")   # that's where the UTI data comes from
 source("analysis/Odds_suppl.R")  # functions, e.g. to get MH estimators
 source("analysis/Lfct.r")
 source("analysis/DIF.fcts.r")
+
+df_pisa_aus_science = read_csv("data/pisa_aus_science_book_1_responses.csv")
 
 set.seed(1)
 
@@ -15,7 +18,7 @@ within.group<-T
 zeros<-T
 m<-35
 
-dat<-as.data.frame(pisa.AUS.book1)
+dat<-as.data.frame(df_pisa_aus_science)
 
 dat[,3:(m+2)]<-as.matrix(dat[,3:(m+2)])
 
@@ -162,17 +165,12 @@ L.BT = map(bootstramp_samples,
            ~.[[4]]) %>% 
   reduce(rbind) 
 
-#X.BT[1:5,1:4]
-
 
 # hilf<-abs(log(ORpair.BT))>=abs(matrix(log(ORpair),dim(ORpair.BT)[1],741,byrow=TRUE))
 hilf<-abs(log(ORpair.BT))>=abs(matrix(log(ORpair),dim(ORpair.BT)[1],m*(m-1)/2,byrow=TRUE))
 hilf0<- ORpair.BT >= matrix(ORpair,dim(ORpair.BT)[1],m*(m-1)/2,byrow=TRUE)
 pval.ORpair<-apply(hilf0,2,mean,na.rm=TRUE)
 summary(pval.ORpair)
-
-
-
 
 # estimate COV from BT sample
 L.Cov.BT<-cov(L.BT)
@@ -193,9 +191,6 @@ tests<-try(construct.tests(L,VarL,CovL))
 # use corrected CovL
 if(!inherits(tests,'try-error')){
   L.Cov <- tests$CovL  # use the corrected CovL which is now labelled L.Cov
-
-  W0<- tests$W
-  W0ind<-tests$Wind
   # CI's diffL
   CIdiff.L<-cbind(tests$lowerdiffL[upp.tri.ind],tests$upperdiffL[upp.tri.ind])
   # W
@@ -237,10 +232,13 @@ W.BT1 <- diag(L.BT%*%solve(L.Cov)%*%t(L.BT)) # use same L.Cov for all BT samples
 W.BT2 <- diag(L.BT%*%solve(L.Cov.BT)%*%t(L.BT))  # use L.Cov.BT for all BT samples
 # plot(density(W.BT2));abline(v=hilf1$W)
 
-Wind.pvalue.BT<- mean(abs(Wind.BT)>=abs(c(W0ind)) ,na.rm=TRUE)
+W0 = rchisq(BT, 35)
+W0ind = rchisq(BT, 35)
+
+Wind.pvalue.BT<- 1-mean(abs(Wind.BT)>=abs(c(W0ind)) ,na.rm=TRUE)
 Wind.pvalue <- tests$pvalueWind
 
-W.pvalue.BT1 <- mean(abs(W.BT1)>=abs(c(W0)) ,na.rm=TRUE)
+W.pvalue.BT1 <- 1-mean(abs(W.BT1)>=abs(c(W0)) ,na.rm=TRUE)
 W.pvalue.BT2 <- mean(W.BT2>=c(W0.BT),na.rm=TRUE)
 W.pvalue.BT <- mean(W.BT>=c(W0),na.rm=TRUE) # standard method calculate BT for each sample again
 
