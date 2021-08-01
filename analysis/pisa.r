@@ -14,7 +14,7 @@ set.seed(1)
 
 ## DATA SETS
 alpha <- 0.05
-within.group <- T
+within.group <- F
 zeros <- T
 m <- 35
 
@@ -31,7 +31,6 @@ dat <- dat[!ind, ]
 dat[, 3:(m + 2)] <- hilf[!ind, ]
 
 dat[, "Total"] <- apply(dat[, 3:(m + 2)], 1, sum)
-hist(dat[, "Total"])
 dat[, "group"] <- bin_data(dat[, "Total"], bins = c(-Inf, seq(5, 30, by = 5), Inf), binType = "explicit")
 
 dat1 <- dat[, 3:(m + 2)]
@@ -44,7 +43,6 @@ h <- dim(dat1)
 n <- h[1]
 K <- 7
 y.sim <- as.matrix(dat1)
-
 
 zeros <- FALSE
 
@@ -59,9 +57,6 @@ X10 <- t(hilf$X10)
 X11 <- t(hilf$X11)
 nk <- hilf$nk
 
-# apply(X,1,sum)/sum(nk)
-# apply(X1,1,sum)/sum(nk)
-
 # we don't need more than that
 # Now apply MH estimator
 
@@ -71,7 +66,6 @@ VarL <- hilf[[3]] # variance of Lab for particular item
 CovL <- hilf[[4]] # covariance between items, c=4, e.g. Cov(L(item1),L(item2)) which is in entru CovL[1,2]
 
 Zs <- c(L / sqrt(VarL))
-# nc.1 <- nearPD(pr, conv.tol = 1e-7, corr = TRUE)
 
 # Now obtain bootstrap samples
 # dim(y.sim)
@@ -82,8 +76,7 @@ summary(ORpair)
 
 m.pairs <- m * (m - 1) / 2
 
-
-BT <- 10000
+BT <- 1e4
 L.BT <- matrix(NA, 0, m)
 W.BT <- NULL
 Wind.BT <- NULL
@@ -175,31 +168,23 @@ L.BT <- map(
 ) %>%
   reduce(rbind)
 
-# hilf<-abs(log(ORpair.BT))>=abs(matrix(log(ORpair),dim(ORpair.BT)[1],741,byrow=TRUE))
-hilf <- abs(log(ORpair.BT)) >= abs(matrix(log(ORpair), dim(ORpair.BT)[1], m * (m - 1) / 2, byrow = TRUE))
 hilf0 <- ORpair.BT >= matrix(ORpair, dim(ORpair.BT)[1], m * (m - 1) / 2, byrow = TRUE)
 pval.ORpair <- apply(hilf0, 2, mean, na.rm = TRUE)
 summary(pval.ORpair)
 
 # estimate COV from BT sample
 L.Cov.BT <- cov(L.BT)
-# nc.1 <- nearPD(pr, conv.tol = 1e-7, corr = TRUE)
 
-# compare Variances of both
-# cbind(diag(L.Cov.BT),c(VarL))
-
-# eigen(L.Cov.BT)$values
-# eigen(diag(VarL)+CovL+t(CovL))$values
-
-# source("Lfct.r")
 upp.tri.ind <- upper.tri(diag(m))
 #
 cat("using MH Cov estimator\n")
 tests <- try(construct.tests(L, VarL, CovL))
-# CovL[1:4,1:4]                  # re-constructed estimates
 # use corrected CovL
 if (!inherits(tests, "try-error")) {
   L.Cov <- tests$CovL # use the corrected CovL which is now labelled L.Cov
+  
+  W0<- tests$W
+  W0ind<-tests$Wind
   # CI's diffL
   CIdiff.L <- cbind(tests$lowerdiffL[upp.tri.ind], tests$upperdiffL[upp.tri.ind])
   # W
@@ -213,8 +198,6 @@ L.Cov.BT[1:4, 1:4] # BT covariance matrix
 cat("using BT Cov estimator\n")
 tests1 <- try(construct.tests(L, VarL = NULL, CovL = L.Cov.BT))
 if (!inherits(tests1, "try-error")) {
-  # hilf1$pvalues
-  # hilf$pvalues
 
   # CI's diffL
   CIdiff.L.BT <- cbind(tests1$lowerdiffL[upp.tri.ind], tests1$upperdiffL[upp.tri.ind])
@@ -224,9 +207,6 @@ if (!inherits(tests1, "try-error")) {
   L.BT.pvalue <- tests1$pvalues
 } # end
 
-
-# doesn"t require tests and tests1
-
 # CI's of L's
 CI.L <- cbind(c(L - 1.96 * sqrt(VarL)), c(L + 1.96 * sqrt(VarL)))
 CI.L.BT <- cbind(c(L - 1.96 * sqrt(diag(L.Cov.BT))), c(L + 1.96 * sqrt(diag(L.Cov.BT))))
@@ -234,31 +214,15 @@ CI.L.BT <- cbind(c(L - 1.96 * sqrt(diag(L.Cov.BT))), c(L + 1.96 * sqrt(diag(L.Co
 # Ws are W's from BT
 # W is just single test statistic from original data set
 
-# hilf1$W
-# hilf$W
 W.BT1 <- diag(L.BT %*% solve(L.Cov) %*% t(L.BT)) # use same L.Cov for all BT samples
-# plot(density(W.BT1));abline(v=hilf$W)
 W.BT2 <- diag(L.BT %*% solve(L.Cov.BT) %*% t(L.BT)) # use L.Cov.BT for all BT samples
-# plot(density(W.BT2));abline(v=hilf1$W)
 
-W0 <- rchisq(BT, m)
-W0ind <- rchisq(BT, m)
-
-Wind.pvalue.BT <- 1 - mean(abs(Wind.BT) >= abs(c(W0ind)), na.rm = TRUE)
+Wind.pvalue.BT <- mean(abs(Wind.BT) >= abs(c(W0ind)), na.rm = TRUE)
 Wind.pvalue <- tests$pvalueWind
 
 W.pvalue.BT1 <- 1 - mean(abs(W.BT1) >= abs(c(W0)), na.rm = TRUE)
 W.pvalue.BT2 <- mean(W.BT2 >= c(W0.BT), na.rm = TRUE)
 W.pvalue.BT <- mean(W.BT >= c(W0), na.rm = TRUE) # standard method calculate BT for each sample again
-
-W.pvalue
-W.pvalue.BT
-W.pvalue.BT1
-W.pvalue.BT2
-W.pvalue.BT3
-
-Wind.pvalue.BT
-Wind.pvalue
 
 Wpvals <- c(Wind.pvalue, Wind.pvalue.BT, W.pvalue, W.pvalue.BT, W.pvalue.BT1, W.pvalue.BT2, W.pvalue.BT3)
 names(Wpvals) <- c("ind-asymp", "ind-BT", "asymp", "BT", "BT-CovL", "BT- CovL.BT", "asymp - CovL.BT")
@@ -276,4 +240,4 @@ pval.ORpair.matrix <- t(pval.ORpair.matrix)
 save(L, CovL, VarL, L.BT, L.Cov.BT, Wpvals,
      ORpair, ORpair.BT, pval.ORpair, pval.ORpair.matrix, ORpair.matrix, pairs, tests,
      bootstramp_samples,
-     file = "output/pisa_results.RData")
+     file = "output/pisa_results_new_wg_f.RData")
