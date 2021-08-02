@@ -240,4 +240,4 @@ pval.ORpair.matrix <- t(pval.ORpair.matrix)
 save(L, CovL, VarL, L.BT, L.Cov.BT, Wpvals,
      ORpair, ORpair.BT, pval.ORpair, pval.ORpair.matrix, ORpair.matrix, pairs, tests,
      bootstramp_samples,
-     file = "output/pisa_results_new_wg_f.RData")
+     file = "output/pisa_results.RData")
