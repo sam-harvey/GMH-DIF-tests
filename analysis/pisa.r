@@ -15,7 +15,7 @@ set.seed(1)
 ## DATA SETS
 alpha <- 0.05
 within.group <- F
-zeros <- T
+zeros <- F
 m <- 35
 
 dat <- as.data.frame(df_pisa_aus_science)
@@ -43,8 +43,6 @@ h <- dim(dat1)
 n <- h[1]
 K <- 7
 y.sim <- as.matrix(dat1)
-
-zeros <- FALSE
 
 # y.sim : 1st column is k and 2nd column is row
 hilf <- obtain.counts.y(y.sim, K, m)
