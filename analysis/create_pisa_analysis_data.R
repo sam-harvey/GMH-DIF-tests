@@ -13,7 +13,7 @@ df_aus_students = df_scored_cogs %>%
          BOOKID == 1) %>% 
   inner_join(df_student %>% 
                select(STIDSTD, CNT, ST04Q01)) %>% 
-  select(STIDSTD, ST04Q01, starts_with('P')) 
+  select(STIDSTD, ST04Q01, starts_with('P'))
 
 df_aus_students = df_aus_students %>% 
   inner_join(df_student_data_dict %>% 
