@@ -146,7 +146,7 @@ obtain.counts.y <- function(y, K, c) {
       if (nk1 > 0) {
 
         # print(nk1)
-        y.hilf <- matrix(y[ind, 3:(c + 2)], nk1, m)
+        y.hilf <- matrix(y[ind, 3:(c + 2)], nk1, c)
         # print(y.hilf)
         hilf <- obtain.counts(y.hilf, c, pairwise = TRUE)
         X[2 * (k - 1) + i, ] <- hilf$X
