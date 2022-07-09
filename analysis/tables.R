@@ -1,7 +1,26 @@
 rm(list = ls())
 source('libraries.R')
+source('analysis/generate-tables.R')
+
+generate_pisa_output_tables('output/pisa_results.RData',
+                            'data/pisa_aus_science_book_1_responses.csv',
+                            'normal')
+
+#Question index from default
+generate_pisa_output_tables('output/pisa_purified_grouping.RData',
+                            'data/pisa_aus_science_book_1_responses.csv',
+                            'purified-grouping'
+                            )
+
+#Hardcode grouping from items detected in original purification stage
+generate_pisa_output_tables('output/pisa_purified_grouping.RData',
+                            'data/pisa_aus_science_book_1_responses.csv',
+                            'purified-grouping-original-items',
+                            pairwise_question_index = c(3, 5, 10, 12, 18, 23, 29, 30, 32, 34))
 
 load('output/pisa_results.RData')
+load('output/pisa_purified_grouping.RData')
+
 df_pisa_aus = read_csv('data/pisa_aus_science_book_1_responses.csv')
 
 #Create individual question DIF test values
@@ -50,7 +69,7 @@ combn(questions, 2) %>%
   t %>% 
   data.frame %>% 
   mutate(q1_parent_q = str_extract(X1, "PS[0-9]+"),
-         q2_parent_q = str_extract(X2, "PS[0-9]+"))%>% 
+         q2_parent_q = str_extract(X2, "PS[0-9]+")) %>% 
   mutate(test = q1_parent_q == q2_parent_q) %>% 
   count(test)
 
