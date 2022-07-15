@@ -166,14 +166,13 @@ adjust_reference_sample_size = function(X, K, N_ref, mu.delta){
 }
 
 
-dif_simulate = function(x){
+dif_simulate = function(){
   # generate data with
   y.sim<-matrix(0,0,m+2)
   
   # nk1 already defined
   # our aim is to have a mean of +1, i.e. if mean is 0.05, then the mean should be 1.05
   # determine now the nks for the
-  st.BT<-system.time({
     for(k in 1:K){
       # ROW 1 (reference)
       # generate nk binary vectors of length m for each strata by row
@@ -183,7 +182,7 @@ dif_simulate = function(x){
         draws = ceiling(m/m0)
         
         y1 = map(1:draws,
-            function(x){
+            function(y){
               RMultBinary(n = nk1[k], mult.bin.dist = p.joint[[1]][[k]])$binary.sequence
             }) %>% 
           reduce(cbind)
@@ -194,7 +193,6 @@ dif_simulate = function(x){
         y1<-RMultBinary(n = nk1[k], mult.bin.dist = p.joint[[1]][[k]])$binary.sequence
       }
       hilf2<-cbind(k,1,y1[,1:m])
-      rm(y1)
       y.sim <- rbind(y.sim,hilf2)
       
       # ROW 2 (focal with FH false hypothese)
@@ -202,11 +200,9 @@ dif_simulate = function(x){
       y2<-RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[FH+1]][[k]])$binary.sequence
       
       hilf1<-cbind(k,2,y2[,1:m])
-      rm(y2)
       y.sim <- rbind(y.sim,hilf1)
       
     }
-  })
   
   # obtain data in particular format
   # items<-1:m
@@ -232,14 +228,16 @@ dif_simulate = function(x){
   # Now obtain bootstrap samples
   cat("create Bootstrap samples and calculate Bootstrap Covariance matrix\n")
   
-  st<-system.time({
-    L.BT <- matrix(NA,BT,m)
-    W.BT<-rep(NA,BT)
-    Wind.BT<-rep(NA,BT)
+  L.BT <- matrix(NA,BT,m)
+  W.BT<-rep(NA,BT)
+  Wind.BT<-rep(NA,BT)
+  within_group = within.group
+  
+  if(use_bt){
     
     for(b in 1:BT){
-      y.boot<- obtain.bootstrap.samples(y.sim,within.group=within.group)
-      hilf<- obtain.counts.y(y.boot,K,m)
+      y.boot<- obtain.bootstrap.samples(y.sim, within.group, K)
+      hilf<- obtain.counts.y(y.boot, K, m)
       
       X.BT<-t(hilf$X)
       X1.BT<-t(hilf$X1)
@@ -259,13 +257,28 @@ dif_simulate = function(x){
         W.BT[b]<-c(hilfBT2$W)
         Wind.BT[b]<- c(hilfBT2$Wind)
       }
-      
-    }#end for
-  })
+  }
+    
+  }#end for
   
-  sim_results = list(L = L, VarL = VarL, CovL = CovL)
+  sim_results = list(L = L, VarL = VarL, CovL = CovL, y1 = y1, y2 = y2, y.sim = y.sim)
   
   return(sim_results)
+}
+
+#' Helper function to call a function with an environment
+#'
+#' @param f 
+#' @param e 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+with_env <- function(f, e=parent.frame()) {
+  stopifnot(is.function(f))
+  environment(f) <- e
+  f
 }
 
 #' Title
@@ -301,12 +314,10 @@ dif_simulation = function(Gamma=1,
                           sim= 1e3,
                           zeros=FALSE,
                           within.group=F,
-                          seed_val=1){
+                          seed_val=1,
+                          use_bt = F){
   set.seed(seed_val) # in order to replicate results
   upp.tri.ind<-upper.tri(diag(m))
-  
-  # K, m, Gamma and OR is given
-  cat("K, m0, m, Gamma , OR, mufoc, i, FH ",K, m0, m, Gamma , OR, mu.delta,i,FH,"\n")
   
   # Load joint prod dist to use in simulation results from generate_joint_distribution()
   joint_dist_name<-paste("Sim_GenDif_m",m0,"_K",100,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
@@ -318,11 +329,11 @@ dif_simulation = function(Gamma=1,
   
   X<-rnorm(K,sd=1)
   X<- X - mean(X)
+  within.group
   
   K1<-K
   K<-K1
   nk<- rep(N_ref/K,K)
-  m<-m1
   
   # adjust nk's to get different abilities in ref and focal group
   if(mu.delta>0){
@@ -361,12 +372,15 @@ dif_simulation = function(Gamma=1,
   simulation_results = parLapply(
     sim_cluster,
     1:sim,
-    dif_simulate)
+    function(y){
+      source('analysis/simulation_study.R', local = TRUE)
+      dif_simulate()
+      })
   
   sim_name<-paste("Sim_GenDif_m",m,"_K",100,"_Gamma",Gamma,"_OR",OR,"_sim_results.RData",sep="")
   
   save(simulation_results,
-       file = sim_name)
+       file = glue('data/simulations/{sim_name}'))
   
   return(simulation_results)
   
