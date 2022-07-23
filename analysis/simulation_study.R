@@ -139,7 +139,7 @@ gen.nk<-function(nk,N,K,X,fixed,nk.min){
   return(nk)
 }
 
-adjust_reference_sample_size = function(X, K, N_ref, mu.delta){
+adjust_reference_sample_size = function(nk, X, K, N_ref, mu.delta){
   meanX<-mean(X[1:K])
   nk.min<- ceiling(N_ref/K*0.3)
   
@@ -332,7 +332,11 @@ dif_simulation = function(Gamma=1,
   m_input = m
   
   # Load joint prod dist to use in simulation results from generate_joint_distribution()
-  joint_dist_name<-paste("Sim_GenDif_m",m0,"_K",K,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
+  if(m > m0){
+    joint_dist_name<-paste("Sim_GenDif_m",m0,"_K",K,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
+  } else{
+    joint_dist_name<-paste("Sim_GenDif_m",m,"_K",K,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
+  }
   load(glue('data/joint-distributions/{joint_dist_name}'))
   
   #Overwrite value saved in joint distribution results
@@ -352,7 +356,7 @@ dif_simulation = function(Gamma=1,
   
   # adjust nk's to get different abilities in ref and focal group
   if(mu.delta>0){
-    nk1 <- adjust_reference_sample_size(X, K, N_ref, mu.delta)
+    nk1 <- adjust_reference_sample_size(nk, X, K, N_ref, mu.delta)
   }else{
     nk1<- rep(N_ref/K,K)
   }
@@ -392,7 +396,7 @@ dif_simulation = function(Gamma=1,
       dif_simulate()
       })
   
-  sim_name = glue("Sim_GenDif_m{m}_K{K}_Gamma{Gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_sims{sim}.RData")
+  sim_name = glue("Sim_GenDif_m{m}_K{K}_Gamma{Gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu.delta}_sims{sim}.RData")
   
   save(simulation_results,
        file = glue('data/simulations/{sim_name}'))
