@@ -96,7 +96,6 @@ mle_dif_estimate = function(df_model_data){
 #' @examples
 mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K20_Gamma1_OR1.5_FH0_Nref500_Nfoc500_sims10000.RData',
                           output_path = glue('data/mle/mle_results_{basename(sim_results_path)}'),
-                          m = 10,
                           parallel=F){
   load(sim_results_path)
   
