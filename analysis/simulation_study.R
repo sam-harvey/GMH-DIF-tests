@@ -189,15 +189,23 @@ dif_simulate = function(){
         
         y1=y1[,1:m]
         
+        # ROW 2 (focal with FH false hypothese), note p.joint only has at most m_upper + 1 elements
+        y2 = map(1:draws,
+                 function(y){
+                   RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[m0+1]][[k]])$binary.sequence
+                 }) %>% 
+          reduce(cbind)
+        
+        y2=y2[,1:m]
+        
       } else{
         y1<-RMultBinary(n = nk1[k], mult.bin.dist = p.joint[[1]][[k]])$binary.sequence
+        # ROW 2 (focal with FH false hypothese)
+        # reference group: i=2
+        y2<-RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[FH+1]][[k]])$binary.sequence
       }
       hilf2<-cbind(k,1,y1[,1:m])
       y.sim <- rbind(y.sim,hilf2)
-      
-      # ROW 2 (focal with FH false hypothese)
-      # reference group: i=2
-      y2<-RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[FH+1]][[k]])$binary.sequence
       
       hilf1<-cbind(k,2,y2[,1:m])
       y.sim <- rbind(y.sim,hilf1)
@@ -261,7 +269,9 @@ dif_simulate = function(){
     
   }#end for
   
-  sim_results = list(L = L, VarL = VarL, CovL = CovL, y1 = y1, y2 = y2, y.sim = y.sim)
+  sim_results = list(L = L, VarL = VarL, CovL = CovL, 
+                     # y1 = y1, y2 = y2, 
+                     y.sim = y.sim)
   
   return(sim_results)
 }
@@ -319,9 +329,14 @@ dif_simulation = function(Gamma=1,
   set.seed(seed_val) # in order to replicate results
   upp.tri.ind<-upper.tri(diag(m))
   
+  m_input = m
+  
   # Load joint prod dist to use in simulation results from generate_joint_distribution()
-  joint_dist_name<-paste("Sim_GenDif_m",m0,"_K",100,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
+  joint_dist_name<-paste("Sim_GenDif_m",m0,"_K",K,"_Gamma",Gamma,"_OR",OR,".RData",sep="")
   load(glue('data/joint-distributions/{joint_dist_name}'))
+  
+  #Overwrite value saved in joint distribution results
+  m = m_input
   
   # simulate sim data sets
   method.names<-c("combined","Bonf","BH","Holm","Hochberg","Hommel","BY")
@@ -344,8 +359,11 @@ dif_simulation = function(Gamma=1,
   
   nk2<- rep(N_ref/K,K)
   
-  
-  log.OR <- c(rep(log(OR),FH),rep(0,m-FH))
+  if(FH>0){
+    log.OR <- c(rep(log(OR),FH),rep(0,m-FH))
+  } else{
+    log.OR <- rep(0,m)
+  }
   log.OR.diff <- matrix(log.OR,m,m,byrow=FALSE) -matrix(log.OR,m,m,byrow=TRUE)
   log.OR.diff <- log.OR.diff[upp.tri.ind]
   
@@ -366,9 +384,6 @@ dif_simulation = function(Gamma=1,
   
   sim_cluster = setup_sim_cluster(sim_environment = environment())
   
-  cat("FH=",FH,"  K=",K,"\n")
-  cat("START SIMULATIONS\n")
-  
   simulation_results = parLapply(
     sim_cluster,
     1:sim,
@@ -377,7 +392,7 @@ dif_simulation = function(Gamma=1,
       dif_simulate()
       })
   
-  sim_name<-paste("Sim_GenDif_m",m,"_K",100,"_Gamma",Gamma,"_OR",OR,"_sim_results.RData",sep="")
+  sim_name = glue("Sim_GenDif_m{m}_K{K}_Gamma{Gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_sims{sim}.RData")
   
   save(simulation_results,
        file = glue('data/simulations/{sim_name}'))
