@@ -8,6 +8,7 @@ source("analysis/Odds_suppl.R") # functions, e.g. to get MH estimators
 source("analysis/Lfct.r")
 source("analysis/DIF.fcts.r")
 source("analysis/pisa_analysis.R")
+source('analysis/mle-estimate-fns.R')
 
 # analysis_files = list.files('analysis')
 # analysis_files = analysis_files[str_detect(analysis_files, '.R')]
@@ -119,3 +120,46 @@ pisa_analysis(normal_dat_purified_group,
               file_path_out = 'output/pisa_purified_grouping.RData',
               m = 35,
               K = 5)
+
+# Perform same LR test for DIF as with simulation study in mle-estimation
+# Do the same for sections 5.1/5.2
+
+pisa_mat_to_model_data = function(mat_in){
+  df_purified_pisa = mat_in %>% 
+    as.data.frame() %>% 
+    pivot_longer(cols = starts_with('PS'), 
+                 names_to = 'question',
+                 values_to = 'response') %>% 
+    rename(group = Gender,
+           k = group) %>% 
+    mutate(group = factor(group, levels = unique(.$group)),
+           question = factor(question, levels = unique(.$question)),
+           response = as.logical(response))
+  
+  return(df_purified_pisa)
+}
+
+df_purified_pisa = pisa_mat_to_model_data(purified_dat)
+
+model_results = mle_dif_estimate(df_purified_pisa)
+
+save(model_results,
+     file = 'data/mle/mle_results_pisa.rda')
+
+pisa_bootstrap_deviance = map(1:1e3,
+    function(x){
+      sampled_stds = sample(1:nrow(purified_dat),
+                            size = nrow(purified_dat),
+                            replace = T)
+      
+      df_model_data = pisa_mat_to_model_data(purified_dat[sampled_stds,])
+      
+      model_results = mle_dif_estimate(df_model_data)
+      
+      return(model_results$chisq_test)
+    }
+) %>% 
+  reduce(c)
+
+sum(pisa_bootstrap_deviance > model_results$chisq_test)/length(pisa_bootstrap_deviance)
+
