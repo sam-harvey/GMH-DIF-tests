@@ -35,12 +35,12 @@ simulation_results_to_glm_input = function(simulation_results,
   
   if(split){
     df_model_return = map(unique(df_glm_input$sample_label),
-                            function(x){
-                              df_model_data = df_glm_input %>% 
-                                filter(sample_label == x)
-                              
-                              return(df_model_data)
-                            })
+                              function(x){
+                                df_model_data = df_glm_input %>% 
+                                  filter(sample_label == x)
+                                
+                                return(df_model_data)
+                              })
   } else{
     df_model_return = df_glm_input
   }
@@ -141,6 +141,7 @@ mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K2
        file = output_path)
 }
 
+
 calculate_mle_summary_stats = function(
   gamma=1,
   m=50,
@@ -186,7 +187,11 @@ calculate_mle_summary_stats = function(
                                 fitted_cov = solve(fitted_cov)
                                 gamma_estimate_col_var = diag(fitted_cov[gamma_estimate_cols,gamma_estimate_cols])
                                 
-                                fh_values = case_when(FH > 0 ~ c(rep(1.5, FH), rep(0, m-FH)),
+                                # fh_values = case_when(FH > 0 ~ c(rep(1.5, FH), rep(0, m-FH)),
+                                #                       FH == 0 ~ rep(0, m))
+                                
+                                # These are on \gamma scale see start of section 3
+                                fh_values = case_when(FH > 0 ~ c(rep(-1/2.35, FH), rep(0, m-FH)),
                                                       FH == 0 ~ rep(0, m))
                                 
                                 data.frame(simulation = x,
