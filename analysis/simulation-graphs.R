@@ -176,7 +176,7 @@ df_tbl_1_plot = plot_main(df_tbl_1,
 
 df_tbl_2_plot = plot_main(df_tbl_2, 
                           subtitle_value = expression('Under '*{mu[1]==0}*' and '*{mu[2]==1}),
-                          ylims = list(c(0,1), c(0.94, 0.97)))
+                          ylims = list(c(0,1), c(0.93, 0.97)))
 
 ggsave('output/plots/table-1-plot-all-aes-v2.png',
        df_tbl_1_plot,
