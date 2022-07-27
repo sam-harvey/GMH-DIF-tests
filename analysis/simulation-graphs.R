@@ -20,7 +20,7 @@ prepare_plot_df = function(df_in){
     rename(gamma = 4) %>% 
     pivot_longer(cols = Asym:Boot_3) %>% 
     mutate(name_position = str_extract(name, '[0-9]+')) %>% 
-    #Convert to plotmath eqns to be interpretted in graphs
+    #Convert to plotmath eqns to be interpreted in graphs
     mutate(facet_name = case_when(name_position %>% is.na() ~ 'Power~italic(W)',
                                   name_position == 1 ~ 'Power~italic(W)[ind]',
                                   name_position == 2 ~ 'Coverage~hat(gamma)[j]',
@@ -34,7 +34,7 @@ get_plot_series_labels = function(df_in){
   # plot_breaks = df_in$plot_label %>% unique %>% sort
   # plot_labels_parsed = map(plot_breaks, as.expression) %>% reduce(c)
   
-  plot_breaks = plot_df$plot_label %>% unique %>% sort
+  plot_breaks = df_in$plot_label %>% unique %>% sort
   
   plot_labs = c()
   
@@ -94,8 +94,8 @@ plot_function = function(df_in,
       ,colour = NULL
       ,linetype = NULL
       ,shape = NULL
-    )
-    # scale_y_continuous(limits = ylims)
+    )+
+    scale_y_continuous(limits = ylims)
 }
 
 plot_main = function(df_in, 
@@ -172,18 +172,18 @@ plot_width = 10
 
 df_tbl_1_plot = plot_main(df_tbl_1, 
                           subtitle_value = expression('Under '*{mu[1]==mu[2]}==0),
-                          ylims = list(c(0,1), c(0.94, 0.97)))
+                          ylims = list(c(0,1), c(0.93, 0.97)))
 
 df_tbl_2_plot = plot_main(df_tbl_2, 
                           subtitle_value = expression('Under '*{mu[1]==0}*' and '*{mu[2]==1}),
                           ylims = list(c(0,1), c(0.94, 0.97)))
 
-ggsave('output/plots/table-1-plot-all-aes.png',
+ggsave('output/plots/table-1-plot-all-aes-v2.png',
        df_tbl_1_plot,
        h=plot_height,
        w=plot_width)
 
-ggsave('output/plots/table-2-plot-all-aes.png',
+ggsave('output/plots/table-2-plot-all-aes-v2.png',
        df_tbl_2_plot,
        h=plot_height,
        w=plot_width)
