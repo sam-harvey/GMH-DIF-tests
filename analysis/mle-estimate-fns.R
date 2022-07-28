@@ -59,8 +59,7 @@ simulation_results_to_glm_input = function(simulation_results,
 mle_dif_estimate = function(df_model_data){
   #Set SAS-style constraint in GLM to \beta_{ref_group=2}j = 0
   #GLM coefficients returned are then \gamma_{focal}j
-  full_model_frame = model.frame(response ~ question:k + question:C(group, contr = contr.SAS(2)) - 1,
-                                 # response ~ question:k + question:group - 1,
+  full_model_frame = model.frame(response ~ question:k + question:C(group, contr = contr.SAS(2)),
                                  df_model_data)
   
   full_model_matrix = model.matrix(object = full_model_frame,
@@ -69,7 +68,7 @@ mle_dif_estimate = function(df_model_data){
   fit_full = fastLR(x=full_model_matrix,
                     y=df_model_data$response)
   
-  reduced_model_frame = model.frame(response ~ question:k + question - 1,
+  reduced_model_frame = model.frame(response ~ question:k + question,
                                     df_model_data)
   
   reduced_model_matrix = model.matrix(object = reduced_model_frame,
