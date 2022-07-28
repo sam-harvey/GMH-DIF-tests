@@ -9,8 +9,8 @@
 simulation_results_to_glm_input = function(simulation_results,
                                            split=T){
   
-  y_sims = map(simulation_results, function(x){x[['y.sim']]}) %>% 
-    reduce(rbind)
+  y_sims = map(simulation_results, function(x){x[['y.sim']] %>% as.data.frame()}) %>% 
+    bind_rows()
   
   colnames(y_sims) = c('k', 'group', paste0('Q', 1:m))
   
@@ -23,9 +23,9 @@ simulation_results_to_glm_input = function(simulation_results,
                  names_to = 'question',
                  values_to = 'response')
   
-  df_input = df_input  %>% 
-    mutate(across(c(group, k), as.factor),
-           response = as.logical(response))
+  df_input$group = factor(df_input$group, levels = unique(df_input$group))
+  df_input$k = factor(df_input$k, levels = unique(df_input$k))
+  df_input$response = as.logical(df_input$response)
   
   df_glm_input = df_input %>% 
     group_by(k, group, question) %>% 
@@ -34,13 +34,7 @@ simulation_results_to_glm_input = function(simulation_results,
     ungroup()
   
   if(split){
-    df_model_return = map(unique(df_glm_input$sample_label),
-                              function(x){
-                                df_model_data = df_glm_input %>% 
-                                  filter(sample_label == x)
-                                
-                                return(df_model_data)
-                              })
+    df_model_return = split(df_glm_input, df_glm_input$sample_label)
   } else{
     df_model_return = df_glm_input
   }
@@ -134,7 +128,6 @@ mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K2
       })
     
   }
-  
   
   save(model_results,
        file = output_path)
