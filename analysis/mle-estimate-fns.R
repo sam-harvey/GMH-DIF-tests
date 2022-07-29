@@ -7,7 +7,8 @@
 #'
 #' @examples
 simulation_results_to_glm_input = function(simulation_results,
-                                           split=T){
+                                           split=T,
+                                           m=50){
   
   y_sims = map(simulation_results, function(x){x[['y.sim']] %>% as.data.frame()}) %>% 
     bind_rows()
@@ -50,10 +51,15 @@ simulation_results_to_glm_input = function(simulation_results,
 #' @export
 #'
 #' @examples
-mle_dif_estimate = function(df_model_data){
+mle_dif_estimate = function(df_model_data, 
+                            method = c('fast', 'base'),
+                            full_model_formula = response ~ question:k + question:C(group, contr = contr.SAS(2)) - 1,
+                            reduced_model_formula = response ~ question:k + question - 1){
+  
+  if(method == 'fast'){
   #Set SAS-style constraint in GLM to \beta_{ref_group=2}j = 0
   #GLM coefficients returned are then \gamma_{focal}j
-  full_model_frame = model.frame(response ~ question:k + question:C(group, contr = contr.SAS(2)),
+  full_model_frame = model.frame(full_model_formula,
                                  df_model_data)
   
   full_model_matrix = model.matrix(object = full_model_frame,
@@ -62,7 +68,7 @@ mle_dif_estimate = function(df_model_data){
   fit_full = fastLR(x=full_model_matrix,
                     y=df_model_data$response)
   
-  reduced_model_frame = model.frame(response ~ question:k + question,
+  reduced_model_frame = model.frame(reduced_model_formula,
                                     df_model_data)
   
   reduced_model_matrix = model.matrix(object = reduced_model_frame,
@@ -79,6 +85,25 @@ mle_dif_estimate = function(df_model_data){
   results = list(model_matrix = as(full_model_matrix, 'dgCMatrix'),
                  full_model_fit = fit_full,
                  chisq_test = chisq_test)
+  } else if(method == 'base'){
+    
+    fit_full = glm(data=df_model_data,
+                   formula = full_model_formula,
+                   family = 'binomial')
+    
+    fit_reduced = glm(data=df_model_data,
+                      formula = reduced_model_formula,
+                      family = 'binomial')
+    
+    full_deviance = fit_full$deviance
+    reduced_deviance = fit_reduced$deviance
+    
+    chisq_test = full_deviance - reduced_deviance
+    
+    results = list(model_matrix = as(full_model_matrix, 'dgCMatrix'),
+                   full_model_fit = fit_full,
+                   chisq_test = chisq_test)
+  }
   
   return(results)
 }
@@ -95,11 +120,16 @@ mle_dif_estimate = function(df_model_data){
 mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K20_Gamma1_OR1.5_FH0_Nref500_Nfoc500_sims10000.RData',
                           output_path = glue('data/mle/mle_results_{basename(sim_results_path)}'),
                           parallel=F,
-                          split=T){
+                          split=T,
+                          method = c('fast', 'base'),
+                          full_model_formula = response ~ question:k + question:C(group, contr = contr.SAS(2)) - 1,
+                          reduced_model_formula = response ~ question:k + question - 1,
+                          m=50){
   load(sim_results_path)
   
   df_model_data_split = simulation_results_to_glm_input(simulation_results,
-                                                        split = split)
+                                                        split = split,
+                                                        m=m)
   
   if(!split){
     df_model_data_split = list(df_model_data_split)
@@ -116,7 +146,10 @@ mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K2
       sim_cluster,
       df_model_data_split,
       function(df_model_data){
-        mle_dif_estimate(df_model_data)
+        mle_dif_estimate(df_model_data, 
+                         method = method,
+                         full_model_formula = full_model_formula,
+                         reduced_model_formula = reduced_model_formula)
       })
     
   } else{
@@ -124,7 +157,10 @@ mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K2
     model_results = lapply(
       df_model_data_split,
       function(df_model_data){
-        mle_dif_estimate(df_model_data)
+        mle_dif_estimate(df_model_data, 
+                         method = method,
+                         full_model_formula = full_model_formula,
+                         reduced_model_formula = reduced_model_formula)
       })
     
   }
@@ -155,7 +191,8 @@ calculate_mle_summary_stats = function(
   mu_delta=0,
   OR=1.5,
   sims = 100,
-  sim_name = glue('data/mle/mle_results_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.RData')){
+  sim_name = glue('data/mle/mle_results_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.RData'),
+  output_file_name = glue('data/mle-summary/gamma/mle_summary_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.csv')){
   
   # load('data/mle/mle_results_Sim_GenDif_m50_K100_Gamma1_OR1.5_FH0_Nref500_Nfoc500_sims10.RData')
   load(as.character(sim_name))
@@ -167,8 +204,8 @@ calculate_mle_summary_stats = function(
     reduce(c)
   
   # Power of test
-  pchisq(chisq_stats, 50)
-  sum(pchisq(chisq_stats, 50) < 0.05) / length(chisq_stats)
+  # pchisq(chisq_stats, 50)
+  # sum(pchisq(chisq_stats, 50) < 0.05) / length(chisq_stats)
   
   save(chisq_stats,
        file = glue('data/mle-summary/power/mle_summary_power_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.RData'))
@@ -188,7 +225,9 @@ calculate_mle_summary_stats = function(
                                 sparse_id_mat = sparse_identity(length(fitted_probabilities))
                                 V = sparse_id_mat * fitted_probabilities * (1 - fitted_probabilities)
                                 fitted_cov = t(model_matrix) %*% (V) %*% model_matrix
+                                #TODO try catch etc
                                 fitted_cov = solve(fitted_cov)
+                                # fitted_cov = spginv(fitted_cov)
                                 gamma_estimate_col_var = diag(fitted_cov[gamma_estimate_cols,gamma_estimate_cols])
                                 
                                 # fh_values = case_when(FH > 0 ~ c(rep(1.5, FH), rep(0, m-FH)),
@@ -212,13 +251,99 @@ calculate_mle_summary_stats = function(
                               }) %>% 
     bind_rows()
   
-  file_name = glue('data/mle-summary/gamma/mle_summary_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.csv')
   write_csv(x=df_simulation_summary,
-            file=file_name)
+            file=output_file_name)
 }
 
 sparse_identity = function(n){
   bandSparse(n, n, 0, list(rep(1, n+1))) 
 }
 
+setup_data_dirs = function(){
+  dirs = c("data",
+    "data/animal",
+    "data/booklet",
+    "data/data-dictionaries",
+    "data/eap",
+    "data/joint-distributions",
+    "data/mle",
+    "data/mle-summary",
+    "data/mle-summary/gamma",
+    "data/mle-summary/gamma/archive",
+    "data/mle-summary/power",
+    "data/mle-summary/power/archive",
+    "data/mle/archive",
+    "data/New folder",
+    "data/raw-responses",
+    "data/responses",
+    "data/simulations")
+  
+  walk(dirs, ~dir.create(.))
+}
 
+run_simulations = function(N_ref = 1000,
+                           N_foc = 200,
+                           K=5, 
+                           m=50,
+                           m0 = 10,
+                           FH=5,
+                           OR=1.5,
+                           sim= 1e1,
+                           gamma = 1,
+                           mu_delta = 0,
+                           simulation_file){
+  
+  experiment_params = create_simulation_scenarios(N_ref = N_ref,
+                                                  K=K, 
+                                                  m=m,
+                                                  m0 = m0,
+                                                  FH=FH,
+                                                  OR=OR,
+                                                  sim=sim,
+                                                  gamma = gamma,
+                                                  mu_delta = mu_delta) %>% 
+    mutate(N_foc = N_ref)
+  
+  # generate_joint_distribution(K=experiment_params$K, 
+  #                             m=experiment_params$m0,
+  #                             Gamma=experiment_params$Gamma)
+  
+  dif_sims = dif_simulation(
+    Gamma=gamma,
+    m0=m0,
+    m=m,
+    mu.delta=mu_delta,
+    FH=FH,
+    K=K,
+    N_ref=N_ref,
+    N_foc=N_foc,
+    OR=OR,
+    sim=sim,
+    zeros=FALSE,
+    within.group=F,
+    seed_val=1,
+    use_bt=F
+  )
+  
+  mle_estimation(sim_results_path=simulation_file,
+                 parallel=T,
+                 split=T,
+                 m=m,
+                 method = 'fast'
+                 # method = 'base'
+  )
+  
+  calculate_mle_summary_stats(gamma=gamma,
+                              m=m,
+                              FH=FH,
+                              K=K,
+                              N_ref=N_ref,
+                              N_foc=N_foc,
+                              mu_delta=mu_delta,
+                              OR=OR,
+                              sims=sim)
+  
+  
+  cat(glue('completed simulation: {x}/{nrow(df_dist_variables)}\n'))
+  
+}
