@@ -133,6 +133,17 @@ mle_estimation = function(sim_results_path = 'data/simulations/Sim_GenDif_m50_K2
        file = output_path)
 }
 
+#https://github.com/cran/LRQMM/blob/master/R/spginv.R
+spginv<-function (x)
+{
+  Xsvd <- sparsesvd::sparsesvd(x)
+  Positive <- Xsvd$d > max(sqrt(.Machine$double.eps) * Xsvd$d[1L], 0)
+  if (all(Positive))
+    Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
+  else if (!any(Positive))
+    array(0, dim(x)[2L:1L])
+  else Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) * t(Xsvd$u[, Positive, drop = FALSE]))
+}
 
 calculate_mle_summary_stats = function(
   gamma=1,
@@ -143,10 +154,11 @@ calculate_mle_summary_stats = function(
   N_foc=200,
   mu_delta=0,
   OR=1.5,
-  sims = 100){
+  sims = 100,
+  sim_name = glue('data/mle/mle_results_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.RData')){
   
   # load('data/mle/mle_results_Sim_GenDif_m50_K100_Gamma1_OR1.5_FH0_Nref500_Nfoc500_sims10.RData')
-  load(as.character(glue('data/mle/mle_results_Sim_GenDif_m{m}_K{K}_Gamma{gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu_delta}_sims{sims}.RData')))
+  load(as.character(sim_name))
   
   chisq_stats = lapply(model_results,
                        function(x){
