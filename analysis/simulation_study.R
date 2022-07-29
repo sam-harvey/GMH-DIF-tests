@@ -325,7 +325,8 @@ dif_simulation = function(Gamma=1,
                           zeros=FALSE,
                           within.group=F,
                           seed_val=1,
-                          use_bt = F){
+                          use_bt = F,
+                          sim_name = glue("Sim_GenDif_m{m}_K{K}_Gamma{Gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu.delta}_sims{sim}.RData")){
   set.seed(seed_val) # in order to replicate results
   upp.tri.ind<-upper.tri(diag(m))
   
@@ -395,8 +396,6 @@ dif_simulation = function(Gamma=1,
       source('analysis/simulation_study.R', local = TRUE)
       dif_simulate()
       })
-  
-  sim_name = glue("Sim_GenDif_m{m}_K{K}_Gamma{Gamma}_OR{OR}_FH{FH}_Nref{N_ref}_Nfoc{N_foc}_mudelta{mu.delta}_sims{sim}.RData")
   
   save(simulation_results,
        file = glue('data/simulations/{sim_name}'))
