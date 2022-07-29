@@ -34,10 +34,11 @@ walk(
                        m0 = experiment_params$m0,
                        FH=experiment_params$FH,
                        OR=experiment_params$OR,
-                       sim= 1e1,
+                       sim=experiment_params$sim,
                        gamma = experiment_params$gamma,
                        mu_delta = experiment_params$mu_delta,
-                       simulation_file = experiment_params$simulation_file)
+                       simulation_file = experiment_params$simulation_file,
+                       skip_simulation_stage=F)
        
        cat(glue('completed simulation: {x}/{nrow(df_dist_variables)}\n'))
      }, otherwise = 'Failed'))

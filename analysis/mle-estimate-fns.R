@@ -291,7 +291,8 @@ run_simulations = function(N_ref = 1000,
                            sim= 1e1,
                            gamma = 1,
                            mu_delta = 0,
-                           simulation_file){
+                           simulation_file,
+                           skip_simulation_stage=F){
   
   experiment_params = create_simulation_scenarios(N_ref = N_ref,
                                                   K=K, 
@@ -304,26 +305,24 @@ run_simulations = function(N_ref = 1000,
                                                   mu_delta = mu_delta) %>% 
     mutate(N_foc = N_ref)
   
-  # generate_joint_distribution(K=experiment_params$K, 
-  #                             m=experiment_params$m0,
-  #                             Gamma=experiment_params$Gamma)
-  
-  dif_sims = dif_simulation(
-    Gamma=gamma,
-    m0=m0,
-    m=m,
-    mu.delta=mu_delta,
-    FH=FH,
-    K=K,
-    N_ref=N_ref,
-    N_foc=N_foc,
-    OR=OR,
-    sim=sim,
-    zeros=FALSE,
-    within.group=F,
-    seed_val=1,
-    use_bt=F
-  )
+  if(!skip_simulation_stage){
+    dif_sims = dif_simulation(
+      Gamma=gamma,
+      m0=m0,
+      m=m,
+      mu.delta=mu_delta,
+      FH=FH,
+      K=K,
+      N_ref=N_ref,
+      N_foc=N_foc,
+      OR=OR,
+      sim=sim,
+      zeros=FALSE,
+      within.group=F,
+      seed_val=1,
+      use_bt=F
+    )
+  }
   
   mle_estimation(sim_results_path=simulation_file,
                  parallel=T,
