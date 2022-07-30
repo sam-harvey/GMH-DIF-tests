@@ -187,7 +187,7 @@ dif_simulate = function(){
             }) %>% 
           reduce(cbind)
         
-        y1=y1[,1:m]
+        # y1=y1[,1:m]
         
         # ROW 2 (focal with FH false hypothese), note p.joint only has at most m_upper + 1 elements
         y2 = map(1:draws,
@@ -196,18 +196,20 @@ dif_simulate = function(){
                  }) %>% 
           reduce(cbind)
         
-        y2=y2[,1:m]
+        # y2=y2[,1:m]
         
       } else{
         y1<-RMultBinary(n = nk1[k], mult.bin.dist = p.joint[[1]][[k]])$binary.sequence
         # ROW 2 (focal with FH false hypothese)
         # reference group: i=2
         y2<-RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[FH+1]][[k]])$binary.sequence
+        # y1=y1[,1:m]
+        # y2=y2[,1:m]
       }
-      hilf2<-cbind(k,1,y1[,1:m])
+      hilf2<-cbind(k,1,y1)
       y.sim <- rbind(y.sim,hilf2)
       
-      hilf1<-cbind(k,2,y2[,1:m])
+      hilf1<-cbind(k,2,y2)
       y.sim <- rbind(y.sim,hilf1)
       
     }
