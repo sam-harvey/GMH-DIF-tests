@@ -296,7 +296,8 @@ run_simulations = function(N_ref = 1000,
                            mu_delta = 0,
                            simulation_file,
                            skip_simulation_stage=F,
-                           split = F){
+                           split = F,
+                           parallel=T){
   
   experiment_params = create_simulation_scenarios(N_ref = N_ref,
                                                   K=K, 
@@ -329,7 +330,7 @@ run_simulations = function(N_ref = 1000,
   }
   
   mle_estimation(sim_results_path=simulation_file,
-                 parallel=T,
+                 parallel=parallel,
                  split=split,
                  m=m,
                  method = 'fast'
