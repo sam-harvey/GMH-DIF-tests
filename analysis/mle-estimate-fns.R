@@ -10,10 +10,16 @@ simulation_results_to_glm_input = function(simulation_results,
                                            split=T,
                                            m=50){
   
-  y_sims = map(simulation_results, function(x){x[['y.sim']] %>% as.data.frame()}) %>% 
+  y_sims = map(1:length(simulation_results), 
+               function(x){
+                 simulation_results[[x]]$'y.sim' %>% 
+                   as.data.frame() %>% 
+                   mutate(sample_label = x) %>% 
+                   select(sample_label, everything())
+                 }) %>% 
     bind_rows()
   
-  colnames(y_sims) = c('k', 'group', paste0('Q', 1:m))
+  colnames(y_sims) = c('sample_label', 'k', 'group', paste0('Q', 1:m))
   
   df_input = y_sims %>% 
     as.data.frame() %>% 
@@ -28,14 +34,8 @@ simulation_results_to_glm_input = function(simulation_results,
   df_input$k = factor(df_input$k, levels = unique(df_input$k))
   df_input$response = as.logical(df_input$response)
   
-  df_glm_input = df_input %>% 
-    group_by(k, group, question) %>% 
-    #Create a label of the N_k samples
-    mutate(sample_label = row_number()) %>% 
-    ungroup()
-  
   if(split){
-    df_model_return = split(df_glm_input, df_glm_input$sample_label)
+    df_model_return = split(df_input, df_input$sample_label)
   } else{
     df_model_return = df_glm_input
   }
@@ -212,7 +212,7 @@ calculate_mle_summary_stats = function(
   
   #Find estimated \gamma_j = \beta_1j (we have constraint \beta_2j = 0)
   df_simulation_summary = map(1:length(model_results),
-                              function(x){
+                              possibly(function(x){
                                 
                                 #Find the coefficients corresponding to gamma_j estimates
                                 model_matrix = model_results[[x]]$model_matrix
@@ -248,7 +248,7 @@ calculate_mle_summary_stats = function(
                                   mutate(covers_true_value = gamma_estimate_lower <= true_value & true_value <= gamma_estimate_upper) %>% 
                                   as.tbl()
                                 
-                              }) %>% 
+                              }, otherwise = NULL)) %>% 
     bind_rows()
   
   write_csv(x=df_simulation_summary,
@@ -292,7 +292,8 @@ run_simulations = function(N_ref = 1000,
                            gamma = 1,
                            mu_delta = 0,
                            simulation_file,
-                           skip_simulation_stage=F){
+                           skip_simulation_stage=F,
+                           split = F){
   
   experiment_params = create_simulation_scenarios(N_ref = N_ref,
                                                   K=K, 
@@ -326,7 +327,7 @@ run_simulations = function(N_ref = 1000,
   
   mle_estimation(sim_results_path=simulation_file,
                  parallel=T,
-                 split=T,
+                 split=split,
                  m=m,
                  method = 'fast'
                  # method = 'base'
