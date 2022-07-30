@@ -10,19 +10,22 @@ simulation_results_to_glm_input = function(simulation_results,
                                            split=T,
                                            m=50){
   
-  y_sims = map(1:length(simulation_results), 
+  y_sims = map(1:length(simulation_results),
                function(x){
-                 simulation_results[[x]]$'y.sim' %>% 
-                   as.data.frame() %>% 
-                   mutate(sample_label = x) %>% 
-                   select(sample_label, everything())
+                 df_sim_results = simulation_results[[x]]$'y.sim' %>% 
+                   as.data.frame()
+                   
+                   colnames(df_sim_results) = c('k', 'group', paste0('Q', 1:m))
+                   
+                   df_sim_results = df_sim_results %>% 
+                     mutate(sample_label = x) %>% 
+                     dplyr::select(sample_label, everything())
+                   
+                   return(df_sim_results)
                  }) %>% 
     bind_rows()
   
-  colnames(y_sims) = c('sample_label', 'k', 'group', paste0('Q', 1:m))
-  
   df_input = y_sims %>% 
-    as.data.frame() %>% 
     as_tibble() 
   
   df_input = df_input %>% 
@@ -37,7 +40,7 @@ simulation_results_to_glm_input = function(simulation_results,
   if(split){
     df_model_return = split(df_input, df_input$sample_label)
   } else{
-    df_model_return = df_glm_input
+    df_model_return = df_input
   }
   
   return(df_model_return)
