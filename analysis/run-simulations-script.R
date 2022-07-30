@@ -38,7 +38,8 @@ walk(
                        gamma = experiment_params$gamma,
                        mu_delta = experiment_params$mu_delta,
                        simulation_file = experiment_params$simulation_file,
-                       split = T)
+                       split = T,
+                       parallel = T)
        
        cat(glue('completed simulation: {x}/{nrow(df_dist_variables)}\n'))
      }, otherwise = 'Failed'))
