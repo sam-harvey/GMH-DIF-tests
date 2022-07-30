@@ -100,7 +100,7 @@ mle_dif_estimate = function(df_model_data,
     
     chisq_test = full_deviance - reduced_deviance
     
-    results = list(model_matrix = as(full_model_matrix, 'dgCMatrix'),
+    results = list(model_matrix = as(model.matrix(fit_full), 'dgCMatrix'),
                    full_model_fit = fit_full,
                    chisq_test = chisq_test)
   }
@@ -221,7 +221,7 @@ calculate_mle_summary_stats = function(
                                 gamma_estimates = model_results[[x]]$full_model_fit$coefficients[gamma_estimate_cols]
                                 
                                 #Find COV not provided directly by fastLR()
-                                fitted_probabilities = model_results[[1]]$full_model_fit$fitted.values
+                                fitted_probabilities = model_results[[x]]$full_model_fit$fitted.values
                                 sparse_id_mat = sparse_identity(length(fitted_probabilities))
                                 V = sparse_id_mat * fitted_probabilities * (1 - fitted_probabilities)
                                 fitted_cov = t(model_matrix) %*% (V) %*% model_matrix
@@ -234,7 +234,7 @@ calculate_mle_summary_stats = function(
                                 #                       FH == 0 ~ rep(0, m))
                                 
                                 # These are on \gamma scale see start of section 3
-                                fh_values = case_when(FH > 0 ~ c(rep(-1/2.35, FH), rep(0, m-FH)),
+                                fh_values = case_when(FH > 0 ~ c(rep(-log(OR), FH), rep(0, m-FH)),
                                                       FH == 0 ~ rep(0, m))
                                 
                                 data.frame(simulation = x,
