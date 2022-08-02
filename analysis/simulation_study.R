@@ -190,9 +190,15 @@ dif_simulate = function(){
         # y1=y1[,1:m]
         
         # ROW 2 (focal with FH false hypothese), note p.joint only has at most m_upper + 1 elements
+        # Need to determine the number of FH items in each draw where m > m_upper
         y2 = map(1:draws,
                  function(y){
-                   RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[m0+1]][[k]])$binary.sequence
+                   #continue sampling at most m_upper False items each iteration, 
+                   #to sample in total FH false items
+                   fh_items = case_when(FH - m0 * (y - 1) > 0 ~ min(FH - m0 * (y - 1), m0),
+                                        TRUE ~ 0)
+                   
+                   RMultBinary(n = nk2[k], mult.bin.dist = p.joint[[fh_items+1]][[k]])$binary.sequence
                  }) %>% 
           reduce(cbind)
         
