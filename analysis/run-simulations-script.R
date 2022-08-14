@@ -27,6 +27,7 @@ walk(
      possibly(function(x){
        experiment_params = df_dist_variables[x,]
        
+       glue("Sim_GenDif_m{ifelse(experiment_params$m > experiment_params$m0, experiment_params$m0, experiment_params$m)}_K{experiment_params$K}_Gamma{experiment_params$gamma}_OR{experiment_params$OR}.RData")
        file.name.gen <- paste("Sim_GenDif_m",experiment_params$m,"_K",experiment_params$K,"_Gamma",experiment_params$gamma,"_OR",experiment_params$OR,".RData",sep="")
        file.name.gen = glue("data/joint-distributions/{file.name.gen}")
        
