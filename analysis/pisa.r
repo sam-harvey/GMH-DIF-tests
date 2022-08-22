@@ -133,6 +133,7 @@ pisa_mat_to_model_data = function(mat_in){
     rename(group = Gender,
            k = group) %>% 
     mutate(group = factor(group, levels = unique(.$group)),
+           k = factor(as.character(k), levels = unique(.$k)),
            question = factor(question, levels = unique(.$question)),
            response = as.logical(response))
   
@@ -140,6 +141,8 @@ pisa_mat_to_model_data = function(mat_in){
 }
 
 df_purified_pisa = pisa_mat_to_model_data(purified_dat)
+
+pisa_deviance(df_purified_pisa)
 
 model_results = mle_dif_estimate(df_purified_pisa)
 
@@ -159,7 +162,7 @@ save(model_results,
 pisa_deviance = function(df_model_data){
   #Set SAS-style constraint in GLM to \beta_{ref_group=2}j = 0
   #GLM coefficients returned are then \gamma_{focal}j
-  full_model_frame = model.frame(response ~ question:k + question:C(group, contr = contr.SAS(2)) - 1,
+  full_model_frame = model.frame(response ~ question:k + question:C(group, contr = contr.SAS(2)) ,
                                  # response ~ question:k + question:group - 1,
                                  df_model_data)
   
@@ -169,7 +172,7 @@ pisa_deviance = function(df_model_data){
   fit_full = fastLR(x=full_model_matrix,
                     y=df_model_data$response)
   
-  reduced_model_frame = model.frame(response ~ question:k + question - 1,
+  reduced_model_frame = model.frame(response ~ question:k + question ,
                                     df_model_data)
   
   reduced_model_matrix = model.matrix(object = reduced_model_frame,
