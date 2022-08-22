@@ -23,8 +23,8 @@ df_dist_variables = bind_rows(
                               m = 10,
                               m0 = 10,
                               FH = 5,
-                              OR = 3,
-                              sim = 1e1,
+                              OR = 1.5,
+                              sim = 1e2,
                               gamma = 1,
                               mu_delta = 0),
   # Normal sample per strata - high correlation
@@ -33,8 +33,8 @@ df_dist_variables = bind_rows(
                               m = 10,
                               m0 = 10,
                               FH = 5,
-                              OR = 3,
-                              sim = 1e1,
+                              OR = 1.5,
+                              sim = 1e2,
                               gamma = 10,
                               mu_delta = 0),
   #Sparse sample per strata
@@ -43,27 +43,27 @@ df_dist_variables = bind_rows(
                               m = 50,
                               m0 = 10,
                               FH = 5,
-                              OR = 3,
-                              sim = 1e1,
+                              OR = 1.5,
+                              sim = 1e2,
                               gamma = 1,
-                              mu_delta = 0)
-  # #Very sparse
-  # create_simulation_scenarios(N_ref = 1,
-  #                             K = 10, 
-  #                             m = 10,
-  #                             m0 = 10,
-  #                             FH = 5,
-  #                             OR = 3,
-  #                             sim = 1e1,
-  #                             gamma = 1,
-  #                             mu_delta = 0)
-  ) %>% 
+                              mu_delta = 0), 
+    create_simulation_scenarios(N_ref = 10,
+                                K = 10, 
+                                m = 50,
+                                m0 = 10,
+                                FH = 5,
+                                OR = 1.5,
+                                sim = 1e2,
+                                gamma = 1,
+                                mu_delta = 0)
+  ) %>%
   mutate(N_foc = N_ref)
 
 
 
 walk(
-  1:3
+  # 4,
+  1:4,
   # 1,
   # 2:3,
   # 4,
@@ -165,6 +165,10 @@ df_coverage_stats = df_sim_gamma_results %>%
   filter(covers_true_value) %>% 
   ungroup()
 
+df_coverage_true_value = df_sim_gamma_results %>% 
+  group_by(gamma_results) %>% 
+  summarise(mean_true_value = mean(true_value))
+
 df_gamma_estimates_conditional = df_sim_gamma_results %>% 
   group_by(gamma_results, true_value) %>% 
   summarise(gamma_hat = mean(gamma_estimates)) %>% 
@@ -177,13 +181,14 @@ df_gamma_estimates = df_sim_gamma_results %>%
 df_results = df_dist_variables %>% 
   left_join(df_power_stats) %>% 
   left_join(df_coverage_stats) %>% 
-  left_join(df_gamma_estimates)
+  left_join(df_gamma_estimates) %>% 
+  left_join(df_coverage_true_value)
 
 df_results %>% 
-  select(K, N_ref, N_foc, gamma, FH, power_statistics, coverage_perc, gamma_hat)
+  select(m, K, N_ref, N_foc, gamma, FH, power_statistics, coverage_perc, gamma_hat, mean_true_value)
 
 df_results %>% 
-  select(K, N_ref, N_foc, gamma, FH, power_statistics, coverage_perc, gamma_hat) %>% 
-  arrange(K, gamma, desc(N_ref), FH) %>% 
+  select(K, N_ref, N_foc, gamma, FH, power_statistics, coverage_perc, gamma_hat, mean_true_value) %>% 
+  arrange(m, K, gamma, desc(N_ref), FH) %>% 
   mutate(across(where(is.numeric),~ round(., 4))) %>% 
   write_csv('output/tables/example-simulation-results-formatted.csv')
